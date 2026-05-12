@@ -42,7 +42,7 @@ if 'dark_mode' not in st.session_state:
     st.session_state['dark_mode'] = True 
 
 # =====================================================
-# THEME VARIABLES & CSS
+# THEME VARIABLES & CSS (MOBILE RESPONSIVE!)
 # =====================================================
 if st.session_state['dark_mode']:
     # Soft Grayish-Dark Theme
@@ -154,6 +154,7 @@ st.markdown(
         height: 3.5em !important;
         font-weight: 600 !important;
         font-size: 16px !important;
+        transition: 0.2s;
     }}
     
     button[kind="secondary"] {{
@@ -164,10 +165,39 @@ st.markdown(
         height: 3.5em !important;
         font-weight: 600 !important;
         font-size: 16px !important;
+        transition: 0.2s;
     }}
 
     .stCheckbox > label {{
         font-weight: 600;
+    }}
+
+    /* =========================================
+       📱 MOBILE RESPONSIVENESS ADAPTATIONS 
+       ========================================= */
+    @media (max-width: 768px) {{
+        .hero-title {{
+            font-size: 32px !important; /* Smaller title on mobile */
+        }}
+        .stats-box {{
+            padding: 15px !important; /* Tighter padding */
+            border-radius: 15px !important;
+            margin-bottom: 15px !important;
+        }}
+        .stats-box h2 {{
+            font-size: 24px !important;
+        }}
+        .stats-box p {{
+            font-size: 14px !important;
+        }}
+        button[kind="primary"], button[kind="secondary"] {{
+            font-size: 14px !important; /* Smaller buttons */
+            height: 3em !important;
+            padding: 5px !important;
+        }}
+        [data-testid="stForm"] {{
+            padding: 15px !important;
+        }}
     }}
     </style>
     """,
@@ -177,7 +207,7 @@ st.markdown(
 # =====================================================
 # HEADER & THEME TOGGLE
 # =====================================================
-col_title, col_toggle = st.columns([5, 1])
+col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown('<h1 class="hero-title">Shlok Study Tracker</h1>', unsafe_allow_html=True)
 with col_toggle:
@@ -228,6 +258,7 @@ menu = st.session_state['current_page']
 if menu == "📖 Study Planner":
     study_data = load_data(STUDY_FILE)
     
+    # Using Streamlit's native column stacking for mobile
     col_main, col_side = st.columns([2.2, 1], gap="large")
 
     with col_main:
@@ -310,6 +341,7 @@ else:
     st.markdown("### 🏆 Your Trophy Room")
     
     if ach_data:
+        # Columns will naturally wrap on smaller screens in Streamlit
         cols = st.columns(3)
         for idx, a in enumerate(ach_data):
             with cols[idx % 3]:
@@ -326,13 +358,14 @@ else:
     st.markdown("---")
     with st.form("new_ach_form", clear_on_submit=True):
         st.markdown("#### Claim a Trophy")
+        # Ensure form inputs stack properly on mobile
         col1, col2 = st.columns(2)
         with col1:
             title = st.text_input("What did you achieve?")
         with col2:
             cat = st.text_input("Category (e.g. Exam, Sports)")
         
-        if st.form_submit_button("Add to Wall of Fame"):
+        if st.form_submit_button("Add to Wall of Fame", use_container_width=True):
             if title and cat:
                 ach_data.append({"title": title, "category": cat, "date": str(date.today())})
                 save_data(ACH_FILE, ach_data)
