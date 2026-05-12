@@ -1,1 +1,12 @@
-[]
+[
+    {
+        "subject": "Sci",
+        "topic": "Gra",
+        "completed": true
+    },
+    {
+        "subject": "Do",
+        "topic": "Yes",
+        "completed": false
+    }
+]
