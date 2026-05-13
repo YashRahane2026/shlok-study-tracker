@@ -3,6 +3,8 @@ import json
 import os
 from datetime import date
 import plotly.graph_objects as go
+import google.generativeai as genai
+import urllib.parse
 
 # =====================================================
 # DATA MANAGEMENT
@@ -234,9 +236,9 @@ st.markdown(
 )
 
 # =====================================================
-# NAVIGATION
+# NAVIGATION (UPDATED TO 3 TABS)
 # =====================================================
-col_nav1, col_nav2 = st.columns(2)
+col_nav1, col_nav2, col_nav3 = st.columns(3)
 with col_nav1:
     btn_state1 = "primary" if st.session_state['current_page'] == "📖 Study Planner" else "secondary"
     if st.button("📖 Study Planner", use_container_width=True, type=btn_state1):
@@ -249,11 +251,17 @@ with col_nav2:
         st.session_state['current_page'] = "🏆 Achievements"
         st.rerun()
 
+with col_nav3:
+    btn_state3 = "primary" if st.session_state['current_page'] == "❓ Doubts" else "secondary"
+    if st.button("❓ Doubts", use_container_width=True, type=btn_state3):
+        st.session_state['current_page'] = "❓ Doubts"
+        st.rerun()
+
 st.markdown("<br>", unsafe_allow_html=True)
 menu = st.session_state['current_page']
 
 # =====================================================
-# STUDY PLANNER
+# 1. STUDY PLANNER
 # =====================================================
 if menu == "📖 Study Planner":
     study_data = load_data(STUDY_FILE)
@@ -334,9 +342,9 @@ if menu == "📖 Study Planner":
                     st.rerun()
 
 # =====================================================
-# ACHIEVEMENTS
+# 2. ACHIEVEMENTS
 # =====================================================
-else:
+elif menu == "🏆 Achievements":
     ach_data = load_data(ACH_FILE)
     st.markdown("### 🏆 Your Trophy Room")
     
@@ -371,3 +379,84 @@ else:
                 save_data(ACH_FILE, ach_data)
                 st.balloons()
                 st.rerun()
+
+# =====================================================
+# 3. AI DOUBTS CHATBOT (NEW SECTION)
+# =====================================================
+elif menu == "❓ Doubts":
+    st.markdown("### 🤖 Ask AI Study Tutor")
+    st.caption("Having trouble with a topic? Ask your doubt in **Hindi, English, Marathi**, or any language! I'll explain it clearly and share a YouTube link for you to watch.")
+    
+    # Initialize chat history
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+        
+    # Display previous messages
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            
+    # Chat Input
+    if prompt := st.chat_input("Type your study doubt here..."):
+        # Show user message
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            
+        # --- SMART API KEY FINDER ---
+        api_key = None
+        
+        # 1. Try to get it from Streamlit Secrets (Works automatically on the live Cloud website)
+        # --- SMART API KEY FINDER ---
+        api_key = None
+        
+        # 1. FIRST: Check the local text file (Forces it to use your PC's fresh key)
+        try:
+            with open("api_key.txt", "r") as f:
+                # Read the file and make sure we ignore empty files
+                content = f.read().strip()
+                if content: 
+                    api_key = content
+        except Exception:
+            pass
+            
+        # 2. SECOND: If no text file is found, fallback to Streamlit Secrets (For your live website)
+        if not api_key:
+            try:
+                api_key = st.secrets["GEMINI_API_KEY"]
+            except Exception:
+                pass
+                
+        # Optional: You can delete or comment out the debug line once it works!
+        # st.warning(f"DEBUG - My app is reading exactly this text: [{api_key}]")         
+        # ----------------------------
+        
+        if not api_key:
+            st.error("⚠️ Cannot find API Key. Please ensure 'api_key.txt' exists locally or Secrets are set on the Cloud.")
+        else:
+            try:
+                genai.configure(api_key=api_key)
+                
+                # Using Gemini 2.5 Flash as it is fast and excellent for conversational tasks
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                
+                sys_prompt = f"""
+                You are a highly intelligent and friendly study tutor. 
+                1. You MUST answer the user's doubt in the exact language they asked (e.g., Hindi, Marathi, English, etc.).
+                2. Explain the concept simply and clearly with examples.
+                3. At the very end of your response, you MUST provide a YouTube link to search for videos on this topic. Format it EXACTLY like this:
+                ---
+                🎥 **Recommended YouTube Videos:** [Click here to watch tutorials on this topic](https://www.youtube.com/results?search_query=your_search_query_here)
+                """
+                
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking & finding videos..."):
+                        full_prompt = sys_prompt + "\n\nUser Question: " + prompt
+                        response = model.generate_content(full_prompt)
+                        st.markdown(response.text)
+                        
+                    # Save to session history
+                    st.session_state.chat_history.append({"role": "assistant", "content": response.text})
+                    
+            except Exception as e:
+                st.error(f"Error connecting to AI: {e}")
